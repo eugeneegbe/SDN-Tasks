@@ -37,6 +37,7 @@ from ryu.topology.api import get_switch, get_link
 from ryu.app.wsgi import ControllerBase
 
 import topo
+import heapq
 
 class SPRouter(app_manager.RyuApp):
 
@@ -57,24 +58,14 @@ class SPRouter(app_manager.RyuApp):
         switches = get_switch(self, None)
         links = get_link(self, None)
 
-        # switch datapath list
-        # self.switches = [sw.dp.id for sw in switches]
+        graph = {}
+        # Adjust topology to to apply shortest path
+        for link in links:
+            src = link.src.dpid
+            dst = link.dst.dpid
+            port = link.src.port_no
 
-        # self.graph = {dpid: [] for dpid in self.switches}
-
-        # # we fill the links for each switch
-        # for link in links:
-        #     src = link.src.dpid
-        #     dst = link.dst.dpid
-        #     port = link.src.port_no
-            
-        #     # add (neigbor, port) to graph
-        #     self.graph[src].append((dst, port))
-            
-        #     self.graph[dst].append((src, link.dst.port_no))
-
-        # for sw in self.graph:
-        #     print(f'{sw}: {self.graph[sw]}')
+            graph.setdefault(src, []).append(dst, 1, port) # we give a weight of 1
 
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -111,3 +102,27 @@ class SPRouter(app_manager.RyuApp):
         parser = datapath.ofproto_parser
 
         # TODO: handle new packets at the controller
+
+
+    def dijsktra_shortest_path(graph, start, goal):
+        # graph: {node: [neighbor, weight, outport), ...]}
+        visited = ()
+        min_heap = [(0, start, [])] # (cost, node, path_so_far)
+
+        while min_heap:
+            cost, current_node, path = heapq.heappop(min_heap)
+
+            if current_node in visited:
+                continue
+
+            visited.add(current_node)
+            path = path + [current_node]
+
+            if current_node == goal:
+                return path
+            
+            for neighbor, weight, _ in graph.get(current_node, []):
+                if neighbor not in visited:
+                    heapq.heappush(min_heap, (cost + weight, neighbor, path))
+
+        return [] # no path found
