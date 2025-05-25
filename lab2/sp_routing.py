@@ -57,6 +57,25 @@ class SPRouter(app_manager.RyuApp):
         switches = get_switch(self, None)
         links = get_link(self, None)
 
+        # switch datapath list
+        # self.switches = [sw.dp.id for sw in switches]
+
+        # self.graph = {dpid: [] for dpid in self.switches}
+
+        # # we fill the links for each switch
+        # for link in links:
+        #     src = link.src.dpid
+        #     dst = link.dst.dpid
+        #     port = link.src.port_no
+            
+        #     # add (neigbor, port) to graph
+        #     self.graph[src].append((dst, port))
+            
+        #     self.graph[dst].append((src, link.dst.port_no))
+
+        # for sw in self.graph:
+        #     print(f'{sw}: {self.graph[sw]}')
+
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
