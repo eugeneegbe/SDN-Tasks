@@ -64,50 +64,59 @@ class Fattree:
 	def __init__(self, num_ports):
 		self.servers = []
 		self.nodes = []
+		self.core = []
+		self.num_ports = num_ports
 		self.generate(num_ports)
 		self.check_nodes_degree()
-		self.num_ports = num_ports
 
 	def generate(self, num_ports):
 		pods = num_ports
 		num_agg_per_pod = num_ports // 2
 		num_edge_per_pod = num_ports // 2
 		num_host_per_edge = num_ports // 2
-		self.core = []
+		num_core = (self.num_ports // 2) ** 2
 
+		# core switches
 		for i in range(num_ports // 2):
 			for j in range(num_ports // 2):
-				self.core.append(Node(f'c{j}_{i}', 'switch'))
-
-		self.nodes.extend(self.core)
+				core = Node(f'c{j}_{i}', 'switch')
+				self.core.append(core)
+				self.nodes.append(core)
 
 		for pod in range(pods):
-			agg = [Node(f'a{pod}_{i}', "switch")  for i in range(num_agg_per_pod)]
-			edge = [Node(f'e{pod}_{i}', "switch") for i in range(num_edge_per_pod)]
+			agg = []
+			edge = []
+
+			# Edge Switches
+			for i in range(num_edge_per_pod):
+				a = Node(f'e{pod}_{i}', "switch")
+				edge.append(a)
+				self.nodes.append(a)
 			
-			# add agg and edge to list of switches
-			self.nodes.extend(agg + edge)
-
-			# add edge to host
-			for i, e in enumerate(edge):
-				for j in range(num_host_per_edge):
-					h = Node(f'h{pod}_{i}_{j}', "host")
+			# Agg switches
+			for i in range(num_agg_per_pod):
+				e = Node(f'a{pod}_{i}', "switch")
+				agg.append(e)
+				self.nodes.append(e)
+			
+			# Connect edge to hosts
+			for e_id, e in enumerate(edge):
+				for h_id in range(num_host_per_edge):
+					h = Node(f'h{pod}_{e_id}_{h_id + 2}', "host")
 					e.add_edge(h)
-
-					# Add h as a host and as a node
 					self.servers.append(h)
 					self.nodes.append(h)
+			
+			# Connect edge to agg
+			for e in edge:
+				for a in agg:
+					e.add_edge(a)
 
-				# connect edge to agg in same pod
-				for e in edge:
-					for a in agg:
-						e.add_edge(a)
-				
-				# Connect agg to core
-				for i, a in enumerate(agg):
-					for j in range(num_ports // 2):
-						conn_index = i * (num_ports // 2) + j
-						a.add_edge(self.core[conn_index])
+			# connect agg to core
+			for i, a in enumerate(agg):
+				for j in range(self.num_ports // 2):
+					index = i * (self.num_ports // 2) + j
+					a.add_edge(self.core[index])
 
 
 	def check_nodes_degree(self):
